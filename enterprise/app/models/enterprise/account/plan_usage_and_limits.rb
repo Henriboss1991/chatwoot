@@ -4,6 +4,16 @@ module Enterprise::Account::PlanUsageAndLimits
   CAPTAIN_RESPONSES_USAGE = 'captain_responses_usage'.freeze
   CAPTAIN_DOCUMENTS_USAGE = 'captain_documents_usage'.freeze
 
+  def feature_enabled?(name)
+    enterprise_features_to_unlock = %w[disable_branding audit_logs agent_capacity sla saml captain_integration help_center custom_roles]
+
+    # 1. Prioridade: Se for uma feature que queremos desbloquear, retorna TRUE.
+    return true if enterprise_features_to_unlock.include?(name.to_s)
+
+    # 2. Se não for uma das features desbloqueadas, continua a cadeia de chamada (super).
+    super(name)
+  end
+
   def usage_limits
     {
       agents: agent_limits.to_i,

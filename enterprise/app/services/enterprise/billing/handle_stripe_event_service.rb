@@ -110,18 +110,27 @@ class Enterprise::Billing::HandleStripeEventService
 
     # Enable features based on plan hierarchy
     case plan_name
+    when 'Community'
+      # Startups plan gets the basic features
+      account.enable_features(*STARTUP_PLAN_FEATURES)
+      account.enable_features(*BUSINESS_PLAN_FEATURES)
+      account.enable_features(*ENTERPRISE_PLAN_FEATURES)
     when 'Startups'
       # Startups plan gets the basic features
       account.enable_features(*STARTUP_PLAN_FEATURES)
+      account.enable_features(*BUSINESS_PLAN_FEATURES)
+      account.enable_features(*ENTERPRISE_PLAN_FEATURES)
     when 'Business'
       # Business plan gets Startups features + Business features
       account.enable_features(*STARTUP_PLAN_FEATURES)
       account.enable_features(*BUSINESS_PLAN_FEATURES)
+      account.enable_features(*ENTERPRISE_PLAN_FEATURES)
     when 'Enterprise'
       # Enterprise plan gets all features
       account.enable_features(*STARTUP_PLAN_FEATURES)
       account.enable_features(*BUSINESS_PLAN_FEATURES)
       account.enable_features(*ENTERPRISE_PLAN_FEATURES)
+      account.enable_features('custom_branding', 'agent_capacity', 'sla', 'saml', 'audit_logs')
     end
   end
 

@@ -15,7 +15,7 @@ class SuperAdmin::InstanceStatusesController < SuperAdmin::ApplicationController
                                    elsif ChatwootApp.custom?
                                      'Custom'
                                    else
-                                     'Community'
+                                     'Enterprise'
                                    end
   end
 
