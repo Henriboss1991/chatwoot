@@ -1,14 +1,12 @@
 # pre-build stage
 FROM node:23-alpine as node
-
-FROM ruby:3.4.4-alpine3.21 AS pre-builder 
+FROM ruby:3.4.4-alpine3.21 AS pre-builder
 
 ARG NODE_VERSION="23.7.0"
 ARG PNPM_VERSION="10.2.0"
 ENV NODE_VERSION=${NODE_VERSION}
 ENV PNPM_VERSION=${PNPM_VERSION}
 
-# ARG default to production settings
 ARG BUNDLE_WITHOUT="development:test"
 ENV BUNDLE_WITHOUT ${BUNDLE_WITHOUT}
 ENV BUNDLER_VERSION=2.5.11
@@ -24,8 +22,8 @@ ENV NODE_OPTIONS ${NODE_OPTIONS}
 
 ENV BUNDLE_PATH="/gems"
 
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories \
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" >/etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
   && apk update && apk add --no-cache \
   openssl \
   tar \
@@ -52,7 +50,6 @@ RUN echo 'export PNPM_HOME="/root/.local/share/pnpm"' >> /root/.shrc \
   && export PATH="$PNPM_HOME:$PATH" \
   && pnpm --version
 
-# Persist the environment variables in Docker
 ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
@@ -60,14 +57,11 @@ WORKDIR /app
 
 COPY Gemfile Gemfile.lock ./
 
-# natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
-# adding xz as nokogiri was failing to build libxml
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories \
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" >/etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
   && apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips
 RUN bundle config set --local force_ruby_platform true
 
-# Do not install development or test gems in production
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   bundle config set without 'development test'; bundle install -j 4 -r 3; \
   else bundle install -j 4 -r 3; \
@@ -78,24 +72,23 @@ RUN pnpm i
 
 COPY . /app
 
-# creating a log directory
 RUN mkdir -p /app/log
 
-# generate production assets if production environment
 RUN if [ "$RAILS_ENV" = "production" ]; then \
   SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
   && rm -rf spec node_modules tmp/cache; \
   fi
 
-# Generate .git_sha file with current commit hash
 #RUN git rev-parse HEAD > /app/.git_sha
 
-# Remove unnecessary files
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
   && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
   && rm -rf .git \
   && rm .gitignore
 
+# ---------------------------------------------
+# FINAL BUILD STAGE
+# ---------------------------------------------
 FROM ruby:3.4.4-alpine3.21
 
 ARG NODE_VERSION="23.7.0"
@@ -120,9 +113,8 @@ ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
-# CORREÇÃO: Força o uso dos repositórios v3.21 no estágio final
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories \
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" >/etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
   && apk update && apk add --no-cache \
   build-base \
   openssl \
@@ -133,7 +125,6 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositor
   vips \
   && gem install bundler
 
-# CORREÇÃO: Garante que Node e pnpm estejam acessíveis no ambiente de produção.
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
@@ -144,7 +135,6 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 COPY --from=pre-builder /gems/ /gems/
 COPY --from=pre-builder /app /app
 
-# Copy .git_sha file from pre-builder stage
 #COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
