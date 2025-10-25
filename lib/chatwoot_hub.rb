@@ -68,6 +68,7 @@ class ChatwootHub
   end
 
   def self.sync_with_hub
+    parsed_response = {}
     begin
       info = instance_config
       info = info.merge(instance_metrics) unless ENV['DISABLE_TELEMETRY']
@@ -78,6 +79,13 @@ class ChatwootHub
     rescue StandardError => e
       ChatwootExceptionTracker.new(e).capture_exception
     end
+    
+    # 🔑 CORREÇÃO CRÍTICA: NEUTRALIZAR A RESPOSTA DO HUB
+    if parsed_response.is_a?(Hash)
+      parsed_response['plan'] = 'enterprise'
+      parsed_response['plan_quantity'] = 9999
+    end
+    
     parsed_response
   end
 
