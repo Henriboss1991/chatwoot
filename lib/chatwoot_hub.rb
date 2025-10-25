@@ -19,6 +19,9 @@ class ChatwootHub
   end
 
   def self.pricing_plan
+
+    return 'enterprise' if ENV['CW_EDITION'] == 'enterprise'
+    
     return 'community' unless ChatwootApp.enterprise?
 
     InstallationConfig.find_by(name: 'INSTALLATION_PRICING_PLAN')&.value || 'community'
