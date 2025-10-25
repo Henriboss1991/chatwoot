@@ -106,12 +106,15 @@ module Enterprise::Account::PlanUsageAndLimits
   end
 
   def agent_limits
-  return 9999 if ChatwootApp.enterprise?
-  subscribed_quantity = custom_attributes['subscribed_quantity']
-  subscribed_quantity || get_limits(:agents)
-end
+    subscribed_quantity = custom_attributes['subscribed_quantity']
+    subscribed_quantity || get_limits(:agents)
+  end
 
   def get_limits(limit_name)
+    if limit_name == :agents && ChatwootApp.enterprise?
+      return 9999 
+    end
+
     config_name = "ACCOUNT_#{limit_name.to_s.upcase}_LIMIT"
     return self[:limits][limit_name.to_s] if self[:limits][limit_name.to_s].present?
 
