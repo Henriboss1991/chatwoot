@@ -1,6 +1,7 @@
 # pre-build stage
 FROM node:23-alpine as node
-FROM ruby:3.4.4-alpine3.23 AS pre-builder
+
+FROM ruby:3.4.4-alpine3.21 AS pre-builder 
 
 ARG NODE_VERSION="23.7.0"
 ARG PNPM_VERSION="10.2.0"
@@ -8,7 +9,6 @@ ENV NODE_VERSION=${NODE_VERSION}
 ENV PNPM_VERSION=${PNPM_VERSION}
 
 # ARG default to production settings
-# For development docker-compose file overrides ARGS
 ARG BUNDLE_WITHOUT="development:test"
 ENV BUNDLE_WITHOUT ${BUNDLE_WITHOUT}
 ENV BUNDLER_VERSION=2.5.11
@@ -24,7 +24,9 @@ ENV NODE_OPTIONS ${NODE_OPTIONS}
 
 ENV BUNDLE_PATH="/gems"
 
-RUN apk update && apk add --no-cache \
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories \
+  && apk update && apk add --no-cache \
   openssl \
   tar \
   build-base \
@@ -59,10 +61,10 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 
 # natively compile grpc and protobuf to support alpine musl (dialogflow-docker workflow)
-# https://github.com/googleapis/google-cloud-ruby/issues/13306
 # adding xz as nokogiri was failing to build libxml
-# https://github.com/chatwoot/chatwoot/issues/4045
-RUN apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories \
+  && apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips
 RUN bundle config set --local force_ruby_platform true
 
 # Do not install development or test gems in production
@@ -76,8 +78,7 @@ RUN pnpm i
 
 COPY . /app
 
-# creating a log directory so that image wont fail when RAILS_LOG_TO_STDOUT is false
-# https://github.com/chatwoot/chatwoot/issues/701
+# creating a log directory
 RUN mkdir -p /app/log
 
 # generate production assets if production environment
@@ -95,10 +96,7 @@ RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
   && rm -rf .git \
   && rm .gitignore
 
-# ---------------------------------------------
-# FINAL BUILD STAGE
-# ---------------------------------------------
-FROM ruby:3.4.4-alpine3.23
+FROM ruby:3.4.4-alpine3.21
 
 ARG NODE_VERSION="23.7.0"
 ARG PNPM_VERSION="10.2.0"
@@ -122,7 +120,10 @@ ARG RAILS_ENV=production
 ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
-RUN apk update && apk add --no-cache \
+# CORREÇÃO: Força o uso dos repositórios v3.21 no estágio final
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" > /etc/apk/repositories \
+  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >> /etc/apk/repositories \
+  && apk update && apk add --no-cache \
   build-base \
   openssl \
   tzdata \
@@ -132,8 +133,7 @@ RUN apk update && apk add --no-cache \
   vips \
   && gem install bundler
 
-# CORREÇÃO AQUI: Garante que Node e seus binários estejam disponíveis no ambiente de produção.
-# Isso corrige o erro 'ViteRuby::MissingExecutableError' e 'pnpm: not found'
+# CORREÇÃO: Garante que Node e pnpm estejam acessíveis no ambiente de produção.
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
