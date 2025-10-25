@@ -25,30 +25,30 @@ ENV NODE_OPTIONS ${NODE_OPTIONS}
 ENV BUNDLE_PATH="/gems"
 
 RUN apk update && apk add --no-cache \
-  openssl \
-  tar \
-  build-base \
-  tzdata \
-  postgresql-dev \
-  postgresql-client \
-  git \
-  curl \
-  xz \
-  && mkdir -p /var/app \
-  && gem install bundler
+  openssl \
+  tar \
+  build-base \
+  tzdata \
+  postgresql-dev \
+  postgresql-client \
+  git \
+  curl \
+  xz \
+  && mkdir -p /var/app \
+  && gem install bundler
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
-  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 RUN npm install -g pnpm@${PNPM_VERSION}
 
 RUN echo 'export PNPM_HOME="/root/.local/share/pnpm"' >> /root/.shrc \
-  && echo 'export PATH="$PNPM_HOME:$PATH"' >> /root/.shrc \
-  && export PNPM_HOME="/root/.local/share/pnpm" \
-  && export PATH="$PNPM_HOME:$PATH" \
-  && pnpm --version
+  && echo 'export PATH="$PNPM_HOME:$PATH"' >> /root/.shrc \
+  && export PNPM_HOME="/root/.local/share/pnpm" \
+  && export PATH="$PNPM_HOME:$PATH" \
+  && pnpm --version
 
 # Persist the environment variables in Docker
 ENV PNPM_HOME="/root/.local/share/pnpm"
@@ -67,9 +67,9 @@ RUN bundle config set --local force_ruby_platform true
 
 # Do not install development or test gems in production
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  bundle config set without 'development test'; bundle install -j 4 -r 3; \
-  else bundle install -j 4 -r 3; \
-  fi
+  bundle config set without 'development test'; bundle install -j 4 -r 3; \
+  else bundle install -j 4 -r 3; \
+  fi
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i
@@ -82,20 +82,22 @@ RUN mkdir -p /app/log
 
 # generate production assets if production environment
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
-  && rm -rf spec node_modules tmp/cache; \
-  fi
+  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
+  && rm -rf spec node_modules tmp/cache; \
+  fi
 
 # Generate .git_sha file with current commit hash
 #RUN git rev-parse HEAD > /app/.git_sha
 
 # Remove unnecessary files
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
-  && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
-  && rm -rf .git \
-  && rm .gitignore
+  && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
+  && rm -rf .git \
+  && rm .gitignore
 
-# final build stage
+# ---------------------------------------------
+# FINAL BUILD STAGE (CORRIGIDO)
+# ---------------------------------------------
 FROM ruby:3.4.4-alpine3.21
 
 ARG NODE_VERSION="23.7.0"
@@ -121,25 +123,23 @@ ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
 RUN apk update && apk add --no-cache \
-  build-base \
-  openssl \
-  tzdata \
-  postgresql-client \
-  imagemagick \
-  git \
-  vips \
-  && gem install bundler
+  build-base \
+  openssl \
+  tzdata \
+  postgresql-client \
+  imagemagick \
+  git \
+  vips \
+  && gem install bundler
 
+# CORREÇÃO AQUI: Garante que Node e seus binários estejam disponíveis no ambiente de produção.
+# Isso corrige o erro 'ViteRuby::MissingExecutableError' e 'pnpm: not found'
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
-
-RUN if [ "$RAILS_ENV" != "production" ]; then \
-  apk add --no-cache curl \
-  && ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
-  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
-  && npm install -g pnpm@${PNPM_VERSION} \
-  && pnpm --version; \
-  fi
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+  && npm install -g pnpm@${PNPM_VERSION} \
+  && pnpm --version
 
 COPY --from=pre-builder /gems/ /gems/
 COPY --from=pre-builder /app /app
