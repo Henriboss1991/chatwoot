@@ -23,32 +23,32 @@ ENV NODE_OPTIONS ${NODE_OPTIONS}
 ENV BUNDLE_PATH="/gems"
 
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" >/etc/apk/repositories \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
-  && apk update && apk add --no-cache \
-  openssl \
-  tar \
-  build-base \
-  tzdata \
-  postgresql-dev \
-  postgresql-client \
-  git \
-  curl \
-  xz \
-  && mkdir -p /var/app \
-  && gem install bundler
+&& echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
+&& apk update && apk add --no-cache \
+openssl \
+tar \
+build-base \
+tzdata \
+postgresql-dev \
+postgresql-client \
+git \
+curl \
+xz \
+&& mkdir -p /var/app \
+&& gem install bundler
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
-  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+&& ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
 RUN npm install -g pnpm@${PNPM_VERSION}
 
 RUN echo 'export PNPM_HOME="/root/.local/share/pnpm"' >> /root/.shrc \
-  && echo 'export PATH="$PNPM_HOME:$PATH"' >> /root/.shrc \
-  && export PNPM_HOME="/root/.local/share/pnpm" \
-  && export PATH="$PNPM_HOME:$PATH" \
-  && pnpm --version
+&& echo 'export PATH="$PNPM_HOME:$PATH"' >> /root/.shrc \
+&& export PNPM_HOME="/root/.local/share/pnpm" \
+&& export PATH="$PNPM_HOME:$PATH" \
+&& pnpm --version
 
 ENV PNPM_HOME="/root/.local/share/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -58,14 +58,14 @@ WORKDIR /app
 COPY Gemfile Gemfile.lock ./
 
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" >/etc/apk/repositories \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
-  && apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips
+&& echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
+&& apk update && apk add --no-cache build-base musl ruby-full ruby-dev gcc make musl-dev openssl openssl-dev g++ linux-headers xz vips
 RUN bundle config set --local force_ruby_platform true
 
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  bundle config set without 'development test'; bundle install -j 4 -r 3; \
-  else bundle install -j 4 -r 3; \
-  fi
+bundle config set without 'development test'; bundle install -j 4 -r 3; \
+else bundle install -j 4 -r 3; \
+fi
 
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i
@@ -75,16 +75,16 @@ COPY . /app
 RUN mkdir -p /app/log
 
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
-  && rm -rf spec node_modules tmp/cache; \
-  fi
+SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
+&& rm -rf spec node_modules tmp/cache; \
+fi
 
 #RUN git rev-parse HEAD > /app/.git_sha
 
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
-  && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
-  && rm -rf .git \
-  && rm .gitignore
+&& find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
+&& rm -rf .git \
+&& rm .gitignore
 
 # ---------------------------------------------
 # FINAL BUILD STAGE
@@ -114,23 +114,23 @@ ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/main" >/etc/apk/repositories \
-  && echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
-  && apk update && apk add --no-cache \
-  build-base \
-  openssl \
-  tzdata \
-  postgresql-client \
-  imagemagick \
-  git \
-  vips \
-  && gem install bundler
+&& echo "https://dl-cdn.alpinelinux.org/alpine/v3.21/community" >>/etc/apk/repositories \
+&& apk update && apk add --no-cache \
+build-base \
+openssl \
+tzdata \
+postgresql-client \
+imagemagick \
+git \
+vips \
+&& gem install bundler
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/
 COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
-  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
-  && npm install -g pnpm@${PNPM_VERSION} \
-  && pnpm --version
+&& ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+&& npm install -g pnpm@${PNPM_VERSION} \
+&& pnpm --version
 
 COPY --from=pre-builder /gems/ /gems/
 COPY --from=pre-builder /app /app
